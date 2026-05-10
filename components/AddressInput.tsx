@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface AddressInputProps {
   onSubmit: (address: string) => void;
@@ -17,6 +17,7 @@ const EXAMPLES = [
 export default function AddressInput({ onSubmit, isLoading }: AddressInputProps) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   const handleSubmit = () => {
     const trimmed = value.trim();
@@ -42,6 +43,8 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
       handleSubmit();
     }
   };
+
+  useEffect(() => setMounted(true), []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,7 +81,7 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
       </div>
 
       <button
-        onClick={handleSubmit}
+        onClick={handleSubmit || !mounted}
         disabled={isLoading}
         className="w-full py-3 rounded-xl bg-[#4D51B1] hover:bg-[#6A37D4] text-white font-semibold text-base transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >

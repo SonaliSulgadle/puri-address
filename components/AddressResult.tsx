@@ -34,7 +34,7 @@ export default function AddressResult({ result }: AddressResultProps) {
   const encodedShort = encodeURIComponent(result.short);
   const naverAppUrl = `nmap://search?query=${encodedShort}&appname=io.puri.address`;
   const naverWebUrl = `https://map.naver.com/p/search/${encodedShort}`;
-  const kakaoUrl = `https://map.kakao.com/?q=${encodedShort}`;
+  const kakaoUrl = `https://map.kakao.com/?q=${encodedShort}&webview=0`;
 
   const handleNaverClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -98,10 +98,12 @@ export default function AddressResult({ result }: AddressResultProps) {
         
         <a
           href={kakaoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          onClick={(e) => {
+            e.preventDefault();
+            window.open(kakaoUrl, '_blank', 'noopener,noreferrer');
+          }}
           className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#FAE100] hover:bg-[#e8cf00] text-[#3A1D1D] font-semibold text-sm transition-colors"
-        >
+          >
           <span>🗺️</span>
           <span>Open in Kakao Map</span>
         </a>
