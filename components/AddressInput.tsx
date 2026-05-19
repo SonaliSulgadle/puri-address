@@ -51,9 +51,10 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
       <div className="flex flex-col gap-1">
         <div className="relative">
           <textarea
-            className={`w-full rounded-xl border-2 p-4 pr-10 text-base resize-none focus:outline-none focus:border-indigo-500 transition-colors text-[#1A1B2E] placeholder-gray-400 bg-white ${
-              error ? 'border-red-400 bg-red-50' : 'border-gray-200'
-            }`}
+            className="w-full rounded-xl border-2 p-4 pr-10 text-base resize-none focus:outline-none transition-colors text-[#1A1C1A] bg-white"
+            style={{
+              borderColor: error ? '#8B3A3A' : value ? '#5C8A6E' : '#C1C8C1',
+            }}
             placeholder={'Paste any Korean address here...\n\nExamples:\n• 서교동 395-166\n• Hongdae exit 9 near GS25'}
             value={value}
             onChange={(e) => {
@@ -67,29 +68,31 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
           {value.length > 0 && !isLoading && (
             <button
               onClick={handleClear}
-              className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-gray-500 text-xs transition-colors"
+              className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full text-xs transition-colors"
+              style={{ backgroundColor: '#E8EDE8', color: '#424942' }}
               aria-label="Clear input"
             >
               ✕
             </button>
           )}
         </div>
-        {error && <p className="text-sm text-red-500 px-1">{error}</p>}
-        <p className="text-xs text-gray-400 px-1">
+        {error && <p className="text-sm px-1" style={{ color: '#8B3A3A' }}>{error}</p>}
+        <p className="text-xs px-1" style={{ color: '#727972' }}>
           Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to convert
         </p>
       </div>
 
       <button
-        onClick={handleSubmit || !mounted}
-        disabled={isLoading}
-        className="w-full py-3 rounded-xl bg-[#4D51B1] hover:bg-[#6A37D4] text-white font-semibold text-base transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        onClick={handleSubmit}
+        disabled={isLoading || !mounted}
+        className="w-full py-3 rounded-xl text-white font-semibold text-base transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        style={{ background: 'linear-gradient(135deg, #5C8A6E 0%, #3E5C49 100%)' }}
       >
         {isLoading ? 'Converting...' : 'Convert Address'}
       </button>
 
       <div className="flex flex-col gap-2">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#727972' }}>
           Try an example
         </p>
         <div className="flex flex-wrap gap-2">
@@ -98,7 +101,18 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
               key={ex}
               onClick={() => setValue(ex)}
               disabled={isLoading}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-60"
+              className="text-xs px-3 py-1.5 rounded-full border bg-white transition-colors disabled:opacity-60"
+              style={{ borderColor: '#C1C8C1', color: '#424942' }}
+              onMouseEnter={e => {
+                (e.target as HTMLButtonElement).style.borderColor = '#5C8A6E';
+                (e.target as HTMLButtonElement).style.color = '#3E5C49';
+                (e.target as HTMLButtonElement).style.backgroundColor = '#DCE6DE';
+              }}
+              onMouseLeave={e => {
+                (e.target as HTMLButtonElement).style.borderColor = '#C1C8C1';
+                (e.target as HTMLButtonElement).style.color = '#424942';
+                (e.target as HTMLButtonElement).style.backgroundColor = 'white';
+              }}
             >
               {ex}
             </button>

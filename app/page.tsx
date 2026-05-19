@@ -46,25 +46,28 @@ export default function Home() {
 
   const remainingColor =
     remaining === null ? '' :
-    remaining > 5 ? 'text-green-600' :
-    remaining > 2 ? 'text-yellow-600' :
-    'text-red-500';
+    remaining > 5 ? 'text-[#5C8A6E]' :
+    remaining > 2 ? 'text-[#B8860B]' :
+    'text-[#8B3A3A]';
 
   return (
     <main className="min-h-screen bg-[#F5F6FC]">
       <div
         className="px-4 py-12 text-center text-white"
-        style={{ background: 'linear-gradient(135deg, #1A1040 0%, #4D51B1 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #5C8A6E 0%, #3E5C49 100%)' }}
       >
         <div className="max-w-xl mx-auto">
           <h1 className="text-3xl font-extrabold tracking-tight mb-2">
             Puri{' '}
             <span className="opacity-70 font-normal text-2xl">(풀이)</span>
           </h1>
-          <p className="text-lg text-indigo-200 mb-3">
+          <p className="text-lg mb-3" style={{ color: '#DCE6DE' }}>
             Convert any Korean address instantly
           </p>
-          <p className="text-xs text-indigo-300 bg-white/10 rounded-full px-4 py-1.5 inline-block">
+          <p
+            className="text-xs rounded-full px-4 py-1.5 inline-block"
+            style={{ color: '#DCE6DE', backgroundColor: 'rgba(255,255,255,0.15)' }}
+          >
             From the Puri app — daily life assistant for foreigners in Korea
           </p>
         </div>
@@ -74,7 +77,7 @@ export default function Home() {
 
         {remaining !== null && (
           <div className="flex items-center justify-end gap-1.5">
-            <span className="text-xs text-gray-400">Conversions remaining this hour:</span>
+            <span className="text-xs text-[#727972]">Conversions remaining this hour:</span>
             <span className={`text-xs font-bold ${remainingColor}`}>
               {remaining} / 10
             </span>
@@ -94,7 +97,7 @@ export default function Home() {
 
         {result && !isLoading && <AddressResult result={result} />}
 
-        <div className="text-xs text-gray-400 text-center pb-4 flex flex-col gap-1">
+        <div className="text-xs text-[#727972] text-center pb-4 flex flex-col gap-1">
           <p>Free tier: 10 conversions per hour per device</p>
           <p>Best for standard addresses and subway stations. Always verify before visiting.</p>
         </div>
