@@ -1,6 +1,8 @@
 const GEMINI_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function callGemini(address: string): Promise<string> {
   const prompt = `You are a Korean address normalization assistant for foreigners in South Korea.
 Output is used to search Naver Map and Kakao Map. Accuracy is more important than completeness.
@@ -32,7 +34,7 @@ Gangnam District → 강남구
 Yeongdeungpo District → 영등포구
 
 EXTRACTION PRIORITY — follow this order strictly:
-1. If the input contains a romanized or English road name (e.g. Seolleung-ro) AND a building number (e.g. 551): convert the road name directly using romanization rules above and use the number as-is. Do NOT substitute a different road name from your knowledge.
+1. If the input contains a romanized or English road name AND a building number: convert the road name directly using romanization rules and use the number as-is. Do NOT substitute a different road name from your knowledge.
 2. If the input contains a Korean road name and number: use as-is.
 3. If the input contains only a district/dong and building name with no road: use your knowledge to find the road address, set CONFIDENCE MEDIUM.
 4. If the input is vague with no number: use nearest landmark, set CONFIDENCE LOW.
@@ -133,29 +135,48 @@ DETAIL: NONE
 CONFIDENCE: HIGH
 NOTE: NONE`;
 
-  const response = await fetch(GEMINI_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': process.env.GEMINI_API_KEY!,
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0 },
-    }),
-  });
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [1000, 2000, 4000];
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${errorText}`);
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY!,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0 },
+      }),
+    });
+
+    // Retry on 503 (overloaded) and 429 (rate limit from Google)
+    if (response.status === 503 || response.status === 429) {
+      const isLastAttempt = attempt === MAX_RETRIES - 1;
+      if (isLastAttempt) {
+        throw new Error(
+          'The AI service is temporarily busy. Please try again in a few seconds.'
+        );
+      }
+      await sleep(RETRY_DELAYS[attempt]);
+      continue;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini API error ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      throw new Error('Gemini returned an empty response');
+    }
+
+    return text;
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error('Gemini returned an empty response');
-  }
-
-  return text;
+  throw new Error('The AI service is temporarily busy. Please try again in a few seconds.');
 }
