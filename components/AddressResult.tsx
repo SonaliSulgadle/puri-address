@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 import type { ParsedAddress } from '@/lib/addressParser';
 
 interface AddressResultProps {
@@ -38,6 +39,7 @@ export default function AddressResult({ result }: AddressResultProps) {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    track('copy_clicked', { confidence: result.confidence });
   };
 
   const encodedShort = encodeURIComponent(result.short);
@@ -49,6 +51,7 @@ export default function AddressResult({ result }: AddressResultProps) {
 
   const handleNaverClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
+    track('naver_map_clicked', { confidence: result.confidence });
     window.location.href = naverAppUrl;
     const fallback = setTimeout(() => {
       window.open(naverWebUrl, '_blank');
@@ -135,6 +138,7 @@ export default function AddressResult({ result }: AddressResultProps) {
           href={kakaoUrl}
           onClick={(e) => {
             e.preventDefault();
+            track('kakao_map_clicked', { confidence: result.confidence });
             window.open(kakaoUrl, '_blank', 'noopener,noreferrer');
           }}
            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-colors"
@@ -149,6 +153,7 @@ export default function AddressResult({ result }: AddressResultProps) {
         href={uberUrl}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => track('uber_clicked', { confidence: result.confidence })}
         className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 font-semibold text-sm transition-colors"
         style={{ borderColor: '#5C8A6E', color: '#3E5C49', backgroundColor: 'white' }}
       >
