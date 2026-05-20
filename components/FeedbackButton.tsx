@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 
 const TALLY_URL = 'https://tally.so/r/81AWlz';
 
@@ -22,6 +23,7 @@ export default function FeedbackButton() {
         href={TALLY_URL}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => track('feedback_clicked')}
         onMouseEnter={() => setTooltip(true)}
         onMouseLeave={() => setTooltip(false)}
         className="flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-semibold shadow-lg transition-colors"

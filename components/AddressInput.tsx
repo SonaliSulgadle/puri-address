@@ -101,7 +101,10 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
           {EXAMPLES.map((ex) => (
             <button
               key={ex}
-              onClick={() => setValue(ex)}
+              onClick={() => {
+                setValue(ex);
+                track('example_clicked', { example: ex });
+              }}
               disabled={isLoading}
               className="text-xs px-3 py-1.5 rounded-full border bg-white transition-colors disabled:opacity-60"
               style={{ borderColor: '#C1C8C1', color: '#424942' }}

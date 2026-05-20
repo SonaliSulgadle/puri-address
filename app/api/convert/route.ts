@@ -70,13 +70,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (looksLikeCoordinates(address)) {
-    return NextResponse.json(
-      {
-        error: 'Coordinates cannot be reliably converted without a geocoding service. Copy the place name from Google Maps instead — for example: "Microsoft Korea, 종로구 종로1길 50".',
-      },
-      { status: 422 }
-    );
-  }
+  console.log('[convert] coordinate_blocked');
+  return NextResponse.json(
+    {
+      error: 'Coordinates cannot be reliably converted without a geocoding service. Copy the place name from Google Maps instead — for example: "Microsoft Korea, 종로구 종로1길 50".',
+      code: 'COORDINATE_BLOCKED',
+    },
+    { status: 422 }
+  );
+}
 
   try {
     const rawText = await callGemini(address);

@@ -31,7 +31,10 @@ export default function Home() {
 
       if (!res.ok) {
         setError(data.error ?? 'Failed to convert address. Please try again.');
-        track('error_shown', { status: res.status });
+        track('error_shown', { 
+          status: res.status,
+          code: data.code ?? 'UNKNOWN'
+        });
         return;
       }
 
