@@ -7,6 +7,7 @@ import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import FeedbackButton from '@/components/FeedbackButton';
 import type { ParsedAddress } from '@/lib/addressParser';
+import { track } from '@vercel/analytics';
 
 export default function Home() {
   const [result, setResult] = useState<ParsedAddress | null>(null);
@@ -30,10 +31,12 @@ export default function Home() {
 
       if (!res.ok) {
         setError(data.error ?? 'Failed to convert address. Please try again.');
+        track('error_shown', { status: res.status });
         return;
       }
 
       setResult(data.result);
+      track('result_shown', { confidence: data.result.confidence });
       if (typeof data.remaining === 'number') {
         setRemaining(data.remaining);
       }

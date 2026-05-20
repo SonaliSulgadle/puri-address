@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { track } from '@vercel/analytics';
 
 interface AddressInputProps {
   onSubmit: (address: string) => void;
@@ -30,6 +31,7 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
       return;
     }
     setError('');
+    track('convert_clicked');
     onSubmit(trimmed);
   };
 
