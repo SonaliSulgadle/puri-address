@@ -15,7 +15,16 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
 
+  const [disambiguation, setDisambiguation] = useState<Array<{
+  normalized: string;
+  short: string;
+  detail: string | null;
+  placeName: string;
+  exitDetail: string | null;
+}> | null>(null);
+
   const handleConvert = async (address: string) => {
+    setDisambiguation(null)
     setIsLoading(true);
     setError(null);
     setResult(null);
@@ -39,6 +48,10 @@ export default function Home() {
       }
 
       setResult(data.result);
+      if (data.disambiguation) {
+        setDisambiguation(data.options);
+        return;
+      }
       track('result_shown', { confidence: data.result.confidence });
       if (typeof data.remaining === 'number') {
         setRemaining(data.remaining);
@@ -91,6 +104,41 @@ export default function Home() {
         )}
 
         <AddressInput onSubmit={handleConvert} isLoading={isLoading} />
+
+        {disambiguation && !isLoading && (
+  <div className="rounded-xl border-2 bg-white shadow-sm overflow-hidden"
+    style={{ borderColor: '#E8EDE8' }}>
+    <div className="px-5 py-3 border-b" style={{ backgroundColor: '#F6FAF6', borderColor: '#E8EDE8' }}>
+      <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#5C8A6E' }}>
+        Multiple locations found — which one?
+      </p>
+    </div>
+    <div className="flex flex-col divide-y" style={{ borderColor: '#E8EDE8' }}>
+      {disambiguation.map((opt, i) => (
+        <button
+          key={i}
+          onClick={() => {
+            setDisambiguation(null);
+            setResult({
+              type: '건물명',
+              normalized: opt.normalized,
+              short: opt.short,
+              detail: opt.exitDetail
+                ? opt.detail ? `${opt.detail}, ${opt.exitDetail}` : opt.exitDetail
+                : opt.detail,
+              confidence: 'HIGH',
+              note: 'Station address shown — your destination is near the exit indicated.',
+            });
+          }}
+          className="px-5 py-4 text-left hover:bg-[#F6FAF6] transition-colors"
+        >
+          <p className="font-semibold text-sm" style={{ color: '#1A1C1A' }}>{opt.placeName}</p>
+          <p className="text-xs mt-0.5" style={{ color: '#727972' }}>{opt.normalized}</p>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
 
         {isLoading && <LoadingState />}
 

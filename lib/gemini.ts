@@ -55,6 +55,12 @@ CRITICAL RULES:
 - Floor/unit/building name go in DETAIL only — never in NORMALIZED or SHORT
 - For vague/informal input: use nearest landmark address, set CONFIDENCE: LOW
 
+STATION RULES:
+- 신촌역 (Sinchon) is in 서대문구 — NOT 마포구
+- 홍대입구역 (Hongdae) is in 마포구 양화로
+- 강남역 is in 강남구 강남대로
+- Never return 마포구 for non-Mapo stations
+
 DETAIL EXTRACTION:
 - 지하[n]층 = basement: "Basement floor [n] (지하[n]층)"
 - [n]층 = floor: "Floor [n] ([n]층)"
@@ -133,7 +139,15 @@ NORMALIZED: 서울특별시 마포구 와우산로29길 17
 SHORT: 마포구 와우산로29길 17
 DETAIL: NONE
 CONFIDENCE: HIGH
-NOTE: NONE`;
+NOTE: NONE
+
+Input: Sinchon station exit 3
+TYPE: 건물명
+NORMALIZED: 서울특별시 서대문구 신촌역로 1
+SHORT: 서대문구 신촌역로 1
+DETAIL: Sinchon Station, Exit 3 (신촌역 3번 출구)
+CONFIDENCE: HIGH
+NOTE: This is the station address — your destination is near Exit 3.`;
 
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [1000, 2000, 4000];
