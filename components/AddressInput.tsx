@@ -57,7 +57,9 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
             style={{
               borderColor: error ? '#8B3A3A' : value ? '#5C8A6E' : '#C1C8C1',
             }}
-            placeholder={'Paste any Korean address here...\n\nExamples:\n• 서교동 395-166\n• Hongdae exit 9 near GS25'}
+            placeholder={
+              'Paste any Korean address here...\n\nExamples:\n• 서교동 395-166\n• Hongdae exit 9 near GS25'
+            }
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
@@ -78,7 +80,11 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
             </button>
           )}
         </div>
-        {error && <p className="text-sm px-1" style={{ color: '#8B3A3A' }}>{error}</p>}
+        {error && (
+          <p className="text-sm px-1" style={{ color: '#8B3A3A' }}>
+            {error}
+          </p>
+        )}
         <p className="text-xs px-1" style={{ color: '#727972' }}>
           Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to convert
         </p>
@@ -108,12 +114,12 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
               disabled={isLoading}
               className="text-xs px-3 py-1.5 rounded-full border bg-white transition-colors disabled:opacity-60"
               style={{ borderColor: '#C1C8C1', color: '#424942' }}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 (e.target as HTMLButtonElement).style.borderColor = '#5C8A6E';
                 (e.target as HTMLButtonElement).style.color = '#3E5C49';
                 (e.target as HTMLButtonElement).style.backgroundColor = '#DCE6DE';
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e) => {
                 (e.target as HTMLButtonElement).style.borderColor = '#C1C8C1';
                 (e.target as HTMLButtonElement).style.color = '#424942';
                 (e.target as HTMLButtonElement).style.backgroundColor = 'white';

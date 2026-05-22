@@ -10,8 +10,14 @@ export interface ParsedAddress {
 // Patterns that should never appear in a map-searchable address
 // These get stripped from NORMALIZED/SHORT and appended to DETAIL
 const LOCATION_DETAIL_PATTERNS = [
-  { pattern: /\s*지하\s*\d+층?/g, label: (m: string) => `Basement${m.replace('지하', '').trim()} (${m.trim()})` },
-  { pattern: /\s*\d+층/g, label: (m: string) => `Floor ${m.replace('층', '').trim()} (${m.trim()})` },
+  {
+    pattern: /\s*지하\s*\d+층?/g,
+    label: (m: string) => `Basement${m.replace('지하', '').trim()} (${m.trim()})`,
+  },
+  {
+    pattern: /\s*\d+층/g,
+    label: (m: string) => `Floor ${m.replace('층', '').trim()} (${m.trim()})`,
+  },
 ];
 
 function extractInlineDetails(address: string): { clean: string; extracted: string[] } {
@@ -21,7 +27,7 @@ function extractInlineDetails(address: string): { clean: string; extracted: stri
   for (const { pattern, label } of LOCATION_DETAIL_PATTERNS) {
     const matches = clean.match(pattern);
     if (matches) {
-      matches.forEach(m => extracted.push(label(m)));
+      matches.forEach((m) => extracted.push(label(m)));
       clean = clean.replace(pattern, '').trim();
     }
   }
@@ -56,28 +62,18 @@ export function parseGeminiResponse(text: string): ParsedAddress {
   normalized = normalizedExtraction.clean;
   short = shortExtraction.clean;
 
-  const inlineExtracted = [
-    ...normalizedExtraction.extracted,
-    ...shortExtraction.extracted,
-  ].filter((v, i, a) => a.indexOf(v) === i); // deduplicate
+  const inlineExtracted = [...normalizedExtraction.extracted, ...shortExtraction.extracted].filter(
+    (v, i, a) => a.indexOf(v) === i
+  );
 
-  // Combine with DETAIL field from Gemini
   const existingDetail =
-    result['DETAIL'] && result['DETAIL'].toUpperCase() !== 'NONE'
-      ? result['DETAIL']
-      : null;
+    result['DETAIL'] && result['DETAIL'].toUpperCase() !== 'NONE' ? result['DETAIL'] : null;
 
-  const allDetails = [
-    ...(existingDetail ? [existingDetail] : []),
-    ...inlineExtracted,
-  ];
+  const allDetails = [...(existingDetail ? [existingDetail] : []), ...inlineExtracted];
 
   const detail = allDetails.length > 0 ? allDetails.join(', ') : null;
 
-  const note =
-    result['NOTE'] && result['NOTE'].toUpperCase() !== 'NONE'
-      ? result['NOTE']
-      : null;
+  const note = result['NOTE'] && result['NOTE'].toUpperCase() !== 'NONE' ? result['NOTE'] : null;
 
   const rawConfidence = result['CONFIDENCE']?.toUpperCase();
   const confidence: 'HIGH' | 'MEDIUM' | 'LOW' =

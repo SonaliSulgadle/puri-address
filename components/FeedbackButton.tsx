@@ -18,7 +18,7 @@ export default function FeedbackButton() {
           Got a wrong result? Tell us and we will fix it.
         </div>
       )}
-      
+
       <a
         href={TALLY_URL}
         target="_blank"

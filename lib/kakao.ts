@@ -47,7 +47,7 @@ interface KakaoKeywordDocument {
   category_group_code?: string;
 }
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function buildShort(normalized: string): string {
   return normalized
@@ -75,7 +75,7 @@ export function extractStationQuery(input: string): {
   exitDetail: string | null;
 } {
   const exitMatch = input.match(/(\d+)\s*번?\s*출구|exit\s*(\d+)/i);
-  const exitNum = exitMatch ? (exitMatch[1] || exitMatch[2]) : null;
+  const exitNum = exitMatch ? exitMatch[1] || exitMatch[2] : null;
   const exitDetail = exitNum ? `Exit ${exitNum} (${exitNum}번 출구)` : null;
 
   const stationQuery = input
@@ -86,9 +86,7 @@ export function extractStationQuery(input: string): {
   return { stationQuery, exitDetail };
 }
 
-export async function searchKakaoAddress(
-  query: string
-): Promise<KakaoResult | null> {
+export async function searchKakaoAddress(query: string): Promise<KakaoResult | null> {
   const apiKey = process.env.KAKAO_API_KEY;
   if (!apiKey) {
     console.warn('[kakao] KAKAO_API_KEY not set');
@@ -133,14 +131,25 @@ export async function searchKakaoAddress(
         const normalized = roadAddress.address_name;
         const short = buildShort(normalized);
         const detail = extractDetail(doc);
-        return { normalized, short, type: '도로명', confidence: 'HIGH', detail, note: null };
+        return {
+          normalized,
+          short,
+          type: '도로명',
+          confidence: 'HIGH',
+          detail,
+          note: null,
+        };
       }
 
       if (jibunAddress) {
         const normalized = jibunAddress.address_name;
         const short = buildShort(normalized);
         return {
-          normalized, short, type: '지번', confidence: 'MEDIUM', detail: null,
+          normalized,
+          short,
+          type: '지번',
+          confidence: 'MEDIUM',
+          detail: null,
           note: 'Jibun (land lot) address — 도로명주소 not available for this location.',
         };
       }
@@ -225,7 +234,14 @@ export async function searchKakaoKeyword(
     const short = buildShort(normalized);
     const detail = doc.place_name || null;
 
-    return { normalized, short, type: '건물명', confidence: 'HIGH', detail, note: null };
+    return {
+      normalized,
+      short,
+      type: '건물명',
+      confidence: 'HIGH',
+      detail,
+      note: null,
+    };
   } catch (error) {
     console.error('[kakao] Keyword fetch error:', error);
     return null;
