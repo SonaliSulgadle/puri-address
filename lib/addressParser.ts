@@ -62,7 +62,7 @@ export function parseGeminiResponse(text: string): ParsedAddress {
   ].filter((v, i, a) => a.indexOf(v) === i); // deduplicate
 
   // Combine with DETAIL field from Gemini
-  let existingDetail =
+  const existingDetail =
     result['DETAIL'] && result['DETAIL'].toUpperCase() !== 'NONE'
       ? result['DETAIL']
       : null;

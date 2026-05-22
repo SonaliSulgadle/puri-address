@@ -40,6 +40,13 @@ interface KakaoDocument {
   } | null;
 }
 
+interface KakaoKeywordDocument {
+  road_address_name?: string;
+  address_name: string;
+  place_name?: string;
+  category_group_code?: string;
+}
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function buildShort(normalized: string): string {
@@ -180,13 +187,13 @@ export async function searchKakaoKeyword(
     // Multiple results — filter and return for disambiguation
     if (size > 1 && documents.length > 1) {
       const options = documents
-        .filter((doc: any) => {
+        .filter((doc: KakaoKeywordDocument) => {
           const category = doc.category_group_code || '';
           const hasRoadAddress = !!doc.road_address_name;
           return hasRoadAddress || ['SW8', 'AT4', 'CT1', 'PO3'].includes(category);
         })
         .slice(0, 3)
-        .map((doc: any) => ({
+        .map((doc: KakaoKeywordDocument) => ({
           normalized: doc.road_address_name || doc.address_name,
           short: buildShort(doc.road_address_name || doc.address_name),
           detail: doc.place_name || null,
@@ -211,7 +218,7 @@ export async function searchKakaoKeyword(
       return { multiple: true, options, exitDetail: null };
     }
 
-    const doc = documents[0];
+    const doc = documents[0] as KakaoKeywordDocument;
     const normalized = doc.road_address_name || doc.address_name;
     if (!normalized) return null;
 
