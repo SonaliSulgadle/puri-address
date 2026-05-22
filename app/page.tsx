@@ -16,15 +16,15 @@ export default function Home() {
   const [remaining, setRemaining] = useState<number | null>(null);
 
   const [disambiguation, setDisambiguation] = useState<Array<{
-  normalized: string;
-  short: string;
-  detail: string | null;
-  placeName: string;
-  exitDetail: string | null;
-}> | null>(null);
+    normalized: string;
+    short: string;
+    detail: string | null;
+    placeName: string;
+    exitDetail: string | null;
+  }> | null>(null);
 
   const handleConvert = async (address: string) => {
-    setDisambiguation(null)
+    setDisambiguation(null);
     setIsLoading(true);
     setError(null);
     setResult(null);
@@ -40,9 +40,9 @@ export default function Home() {
 
       if (!res.ok) {
         setError(data.error ?? 'Failed to convert address. Please try again.');
-        track('error_shown', { 
+        track('error_shown', {
           status: res.status,
-          code: data.code ?? 'UNKNOWN'
+          code: data.code ?? 'UNKNOWN',
         });
         return;
       }
@@ -64,10 +64,13 @@ export default function Home() {
   };
 
   const remainingColor =
-    remaining === null ? '' :
-    remaining > 5 ? 'text-[#5C8A6E]' :
-    remaining > 2 ? 'text-[#B8860B]' :
-    'text-[#8B3A3A]';
+    remaining === null
+      ? ''
+      : remaining > 5
+        ? 'text-[#5C8A6E]'
+        : remaining > 2
+          ? 'text-[#B8860B]'
+          : 'text-[#8B3A3A]';
 
   return (
     <main className="min-h-screen bg-[#F5F6FC]">
@@ -77,8 +80,7 @@ export default function Home() {
       >
         <div className="max-w-xl mx-auto">
           <h1 className="text-3xl font-extrabold tracking-tight mb-2">
-            Puri{' '}
-            <span className="opacity-70 font-normal text-2xl">(풀이)</span>
+            Puri <span className="opacity-70 font-normal text-2xl">(풀이)</span>
           </h1>
           <p className="text-lg mb-3" style={{ color: '#DCE6DE' }}>
             Convert any Korean address instantly
@@ -93,61 +95,67 @@ export default function Home() {
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-8 flex flex-col gap-6">
-
         {remaining !== null && (
           <div className="flex items-center justify-end gap-1.5">
             <span className="text-xs text-[#727972]">Conversions remaining this hour:</span>
-            <span className={`text-xs font-bold ${remainingColor}`}>
-              {remaining} / 10
-            </span>
+            <span className={`text-xs font-bold ${remainingColor}`}>{remaining} / 10</span>
           </div>
         )}
 
         <AddressInput onSubmit={handleConvert} isLoading={isLoading} />
 
         {disambiguation && !isLoading && (
-  <div className="rounded-xl border-2 bg-white shadow-sm overflow-hidden"
-    style={{ borderColor: '#E8EDE8' }}>
-    <div className="px-5 py-3 border-b" style={{ backgroundColor: '#F6FAF6', borderColor: '#E8EDE8' }}>
-      <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#5C8A6E' }}>
-        Multiple locations found — which one?
-      </p>
-    </div>
-    <div className="flex flex-col divide-y" style={{ borderColor: '#E8EDE8' }}>
-      {disambiguation.map((opt, i) => (
-        <button
-          key={i}
-          onClick={() => {
-            setDisambiguation(null);
-            setResult({
-              type: '건물명',
-              normalized: opt.normalized,
-              short: opt.short,
-              detail: opt.exitDetail
-                ? opt.detail ? `${opt.detail}, ${opt.exitDetail}` : opt.exitDetail
-                : opt.detail,
-              confidence: 'HIGH',
-              note: 'Station address shown — your destination is near the exit indicated.',
-            });
-          }}
-          className="px-5 py-4 text-left hover:bg-[#F6FAF6] transition-colors"
-        >
-          <p className="font-semibold text-sm" style={{ color: '#1A1C1A' }}>{opt.placeName}</p>
-          <p className="text-xs mt-0.5" style={{ color: '#727972' }}>{opt.normalized}</p>
-        </button>
-      ))}
-    </div>
-  </div>
-)}
+          <div
+            className="rounded-xl border-2 bg-white shadow-sm overflow-hidden"
+            style={{ borderColor: '#E8EDE8' }}
+          >
+            <div
+              className="px-5 py-3 border-b"
+              style={{ backgroundColor: '#F6FAF6', borderColor: '#E8EDE8' }}
+            >
+              <p
+                className="text-xs font-bold uppercase tracking-widest"
+                style={{ color: '#5C8A6E' }}
+              >
+                Multiple locations found — which one?
+              </p>
+            </div>
+            <div className="flex flex-col divide-y" style={{ borderColor: '#E8EDE8' }}>
+              {disambiguation.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setDisambiguation(null);
+                    setResult({
+                      type: '건물명',
+                      normalized: opt.normalized,
+                      short: opt.short,
+                      detail: opt.exitDetail
+                        ? opt.detail
+                          ? `${opt.detail}, ${opt.exitDetail}`
+                          : opt.exitDetail
+                        : opt.detail,
+                      confidence: 'HIGH',
+                      note: 'Station address shown — your destination is near the exit indicated.',
+                    });
+                  }}
+                  className="px-5 py-4 text-left hover:bg-[#F6FAF6] transition-colors"
+                >
+                  <p className="font-semibold text-sm" style={{ color: '#1A1C1A' }}>
+                    {opt.placeName}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#727972' }}>
+                    {opt.normalized}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {isLoading && <LoadingState />}
 
-        {error && (
-          <ErrorState
-            message={error}
-            onRetry={() => setError(null)}
-          />
-        )}
+        {error && <ErrorState message={error} onRetry={() => setError(null)} />}
 
         {result && !isLoading && <AddressResult result={result} />}
 

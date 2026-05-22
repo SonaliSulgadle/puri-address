@@ -1,7 +1,7 @@
 const GEMINI_ENDPOINT =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function callGemini(address: string): Promise<string> {
   const prompt = `You are a Korean address normalization assistant for foreigners in South Korea.
@@ -169,9 +169,7 @@ NOTE: This is the station address — your destination is near Exit 3.`;
     if (response.status === 503 || response.status === 429) {
       const isLastAttempt = attempt === MAX_RETRIES - 1;
       if (isLastAttempt) {
-        throw new Error(
-          'The AI service is temporarily busy. Please try again in a few seconds.'
-        );
+        throw new Error('The AI service is temporarily busy. Please try again in a few seconds.');
       }
       await sleep(RETRY_DELAYS[attempt]);
       continue;

@@ -67,7 +67,7 @@ export default function AddressResult({ result }: AddressResultProps) {
         className="rounded-xl border-2 bg-white shadow-sm overflow-hidden"
         style={{ borderColor: '#E8EDE8' }}
       >
-       <div
+        <div
           className="px-5 py-3 border-b flex flex-wrap items-center justify-between gap-2"
           style={{ backgroundColor: '#F6FAF6', borderColor: '#E8EDE8' }}
         >
@@ -88,7 +88,9 @@ export default function AddressResult({ result }: AddressResultProps) {
           <p className="text-xl font-bold leading-snug" style={{ color: '#1A1C1A' }}>
             {result.normalized}
           </p>
-          <p className="text-sm" style={{ color: '#727972' }}>{result.short}</p>
+          <p className="text-sm" style={{ color: '#727972' }}>
+            {result.short}
+          </p>
         </div>
         <div className="px-5 pb-4 pt-2">
           <button
@@ -106,10 +108,15 @@ export default function AddressResult({ result }: AddressResultProps) {
           className="rounded-xl border px-5 py-4"
           style={{ backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }}
         >
-          <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#78350F' }}>
+          <p
+            className="text-xs font-bold uppercase tracking-widest mb-1"
+            style={{ color: '#78350F' }}
+          >
             Location Detail
           </p>
-          <p className="text-sm" style={{ color: '#78350F' }}>{result.detail}</p>
+          <p className="text-sm" style={{ color: '#78350F' }}>
+            {result.detail}
+          </p>
         </div>
       )}
 
@@ -119,7 +126,9 @@ export default function AddressResult({ result }: AddressResultProps) {
           style={{ backgroundColor: '#F0F7F2', borderColor: '#B8D4BF' }}
         >
           <span className="text-lg leading-none mt-0.5">ℹ️</span>
-          <p className="text-sm" style={{ color: '#3E5C49' }}>{result.note}</p>
+          <p className="text-sm" style={{ color: '#3E5C49' }}>
+            {result.note}
+          </p>
         </div>
       )}
 
@@ -133,7 +142,7 @@ export default function AddressResult({ result }: AddressResultProps) {
           <span>🗺️</span>
           <span>Open in Naver Map</span>
         </a>
-        
+
         <a
           href={kakaoUrl}
           onClick={(e) => {
@@ -141,7 +150,7 @@ export default function AddressResult({ result }: AddressResultProps) {
             track('kakao_map_clicked', { confidence: result.confidence });
             window.open(kakaoUrl, '_blank', 'noopener,noreferrer');
           }}
-           className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-colors"
           style={{ backgroundColor: '#FAE100', color: '#3A1D1D' }}
         >
           <span>🗺️</span>

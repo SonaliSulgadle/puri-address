@@ -12,7 +12,9 @@ export default function LoadingState() {
           />
         ))}
       </div>
-      <p className="text-sm" style={{ color: '#727972' }}>Converting address...</p>
+      <p className="text-sm" style={{ color: '#727972' }}>
+        Converting address...
+      </p>
     </div>
   );
 }
