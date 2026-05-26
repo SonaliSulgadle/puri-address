@@ -11,14 +11,16 @@ interface AddressInputProps {
 const EXAMPLES = [
   '서교동 395-166',
   'Hongdae exit 9 near GS25',
-  '파크빌 1층 41호 관악구 남부순환로216길',
-  '2호선 홍대입구역 9번 출구',
+  '강릉시 초당동 순두부길',
+  'Busan Gamcheon Culture Village',
 ];
 
 export default function AddressInput({ onSubmit, isLoading }: AddressInputProps) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const handleSubmit = () => {
     const trimmed = value.trim();
@@ -46,8 +48,6 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
     }
   };
 
-  useEffect(() => setMounted(true), []);
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -58,7 +58,7 @@ export default function AddressInput({ onSubmit, isLoading }: AddressInputProps)
               borderColor: error ? '#8B3A3A' : value ? '#5C8A6E' : '#C1C8C1',
             }}
             placeholder={
-              'Paste any Korean address here...\n\nExamples:\n• 서교동 395-166\n• Hongdae exit 9 near GS25'
+              'Paste any Korean address here...\n\nExamples:\n• 서교동 395-166\n• Busan Gamcheon Culture Village'
             }
             value={value}
             onChange={(e) => {

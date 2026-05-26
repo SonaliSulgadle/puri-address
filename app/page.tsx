@@ -1,33 +1,39 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 import AddressInput from '@/components/AddressInput';
 import AddressResult from '@/components/AddressResult';
 import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import FeedbackButton from '@/components/FeedbackButton';
 import type { ParsedAddress } from '@/lib/addressParser';
-import { track } from '@vercel/analytics';
+
+type DisambiguationOption = {
+  normalized: string;
+  short: string;
+  detail: string | null;
+  placeName: string;
+  exitDetail: string | null;
+  cityEnglish: string;
+  placeNameEn: string;
+  shortEn: string;
+};
 
 export default function Home() {
   const [result, setResult] = useState<ParsedAddress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
-
-  const [disambiguation, setDisambiguation] = useState<Array<{
-    normalized: string;
-    short: string;
-    detail: string | null;
-    placeName: string;
-    exitDetail: string | null;
-  }> | null>(null);
+  const [disambiguation, setDisambiguation] = useState<DisambiguationOption[] | null>(null);
+  const [lastDisambiguation, setLastDisambiguation] = useState<DisambiguationOption[] | null>(null);
 
   const handleConvert = async (address: string) => {
-    setDisambiguation(null);
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setDisambiguation(null);
+    setLastDisambiguation(null);
 
     try {
       const res = await fetch('/api/convert', {
@@ -40,18 +46,16 @@ export default function Home() {
 
       if (!res.ok) {
         setError(data.error ?? 'Failed to convert address. Please try again.');
-        track('error_shown', {
-          status: res.status,
-          code: data.code ?? 'UNKNOWN',
-        });
+        track('error_shown', { status: res.status, code: data.code ?? 'UNKNOWN' });
         return;
       }
 
-      setResult(data.result);
       if (data.disambiguation) {
         setDisambiguation(data.options);
         return;
       }
+
+      setResult(data.result);
       track('result_shown', { confidence: data.result.confidence });
       if (typeof data.remaining === 'number') {
         setRemaining(data.remaining);
@@ -61,6 +65,29 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSelectDisambiguation = (opt: DisambiguationOption) => {
+    setLastDisambiguation(disambiguation);
+    setDisambiguation(null);
+
+    let detail: string | null = null;
+    if (opt.exitDetail) {
+      detail = opt.exitDetail;
+    } else if (opt.placeNameEn) {
+      detail = opt.placeNameEn;
+    }
+
+    setResult({
+      type: '건물명',
+      normalized: opt.normalized,
+      short: opt.short,
+      detail: detail,
+      confidence: 'HIGH' as const,
+      note: opt.exitDetail
+        ? 'Station address shown — your destination is near the exit indicated.'
+        : null,
+    });
   };
 
   const remainingColor =
@@ -73,7 +100,7 @@ export default function Home() {
           : 'text-[#8B3A3A]';
 
   return (
-    <main className="min-h-screen bg-[#F5F6FC]">
+    <main className="min-h-screen bg-[#F6FAF6]">
       <div
         className="px-4 py-12 text-center text-white"
         style={{ background: 'linear-gradient(135deg, #5C8A6E 0%, #3E5C49 100%)' }}
@@ -104,6 +131,29 @@ export default function Home() {
 
         <AddressInput onSubmit={handleConvert} isLoading={isLoading} />
 
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="flex gap-2">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-3 h-3 rounded-full animate-bounce"
+                  style={{
+                    backgroundColor: '#5C8A6E',
+                    animationDelay: `${i * 0.15}s`,
+                  }}
+                />
+              ))}
+            </div>
+            <p className="text-sm" style={{ color: '#727972' }}>
+              Converting address...
+            </p>
+          </div>
+        )}
+
+        {error && <ErrorState message={error} onRetry={() => setError(null)} />}
+
+        {/* Disambiguation card */}
         {disambiguation && !isLoading && (
           <div
             className="rounded-xl border-2 bg-white shadow-sm overflow-hidden"
@@ -124,28 +174,27 @@ export default function Home() {
               {disambiguation.map((opt, i) => (
                 <button
                   key={i}
-                  onClick={() => {
-                    setDisambiguation(null);
-                    setResult({
-                      type: '건물명',
-                      normalized: opt.normalized,
-                      short: opt.short,
-                      detail: opt.exitDetail
-                        ? opt.detail
-                          ? `${opt.detail}, ${opt.exitDetail}`
-                          : opt.exitDetail
-                        : opt.detail,
-                      confidence: 'HIGH',
-                      note: 'Station address shown — your destination is near the exit indicated.',
-                    });
-                  }}
-                  className="px-5 py-4 text-left hover:bg-[#F6FAF6] transition-colors"
+                  onClick={() => handleSelectDisambiguation(opt)}
+                  className="px-5 py-4 text-left hover:bg-[#F6FAF6] transition-colors w-full"
                 >
-                  <p className="font-semibold text-sm" style={{ color: '#1A1C1A' }}>
-                    {opt.placeName}
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <p className="text-sm font-semibold" style={{ color: '#1A1C1A' }}>
+                      {opt.placeNameEn || opt.placeName}
+                    </p>
+                    {opt.cityEnglish && (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
+                        style={{ backgroundColor: '#DCE6DE', color: '#3E5C49' }}
+                      >
+                        {opt.cityEnglish}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs" style={{ color: '#424942' }}>
+                    {opt.shortEn || opt.short}
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#727972' }}>
-                    {opt.normalized}
+                  <p className="text-xs mt-0.5" style={{ color: '#C1C8C1' }}>
+                    {opt.placeName} · {opt.short}
                   </p>
                 </button>
               ))}
@@ -153,11 +202,23 @@ export default function Home() {
           </div>
         )}
 
-        {isLoading && <LoadingState />}
-
-        {error && <ErrorState message={error} onRetry={() => setError(null)} />}
-
+        {/* Result */}
         {result && !isLoading && <AddressResult result={result} />}
+
+        {/* Back to options button */}
+        {result && !isLoading && lastDisambiguation && (
+          <button
+            onClick={() => {
+              setDisambiguation(lastDisambiguation);
+              setLastDisambiguation(null);
+              setResult(null);
+            }}
+            className="text-sm px-4 py-2.5 rounded-xl border-2 w-full transition-colors"
+            style={{ borderColor: '#C1C8C1', color: '#424942', backgroundColor: 'white' }}
+          >
+            ← Show other options
+          </button>
+        )}
 
         <div className="text-xs text-[#727972] text-center pb-4 flex flex-col gap-1">
           <p>Free tier: 10 conversions per hour per device</p>
