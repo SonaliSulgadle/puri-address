@@ -54,6 +54,12 @@ CRITICAL RULES:
 - If road number is ambiguous: omit it and set CONFIDENCE: MEDIUM
 - Floor/unit/building name go in DETAIL only — never in NORMALIZED or SHORT
 - For vague/informal input: use nearest landmark address, set CONFIDENCE: LOW
+- NEVER prepend 서울특별시 to addresses outside Seoul
+- For Gangwon addresses use 강원특별자치도
+- For Jeju addresses use 제주특별자치도
+- For Gyeonggi addresses use 경기도
+- For Busan addresses use 부산광역시
+- Single word area inputs (강남, 홍대, 롯데) → return nearest landmark address with CONFIDENCE: LOW
 
 STATION RULES:
 - 신촌역 (Sinchon) is in 서대문구 — NOT 마포구
@@ -147,7 +153,47 @@ NORMALIZED: 서울특별시 서대문구 신촌역로 1
 SHORT: 서대문구 신촌역로 1
 DETAIL: Sinchon Station, Exit 3 (신촌역 3번 출구)
 CONFIDENCE: HIGH
-NOTE: This is the station address — your destination is near Exit 3.`;
+NOTE: This is the station address — your destination is near Exit 3.
+
+Input: 강릉시 초당동 325-6
+TYPE: 지번
+NORMALIZED: 강원특별자치도 강릉시 초당동 325-6
+SHORT: 강릉시 초당동 325-6
+DETAIL: NONE
+CONFIDENCE: HIGH
+NOTE: NONE
+
+Input: 강남
+TYPE: 불완전
+NORMALIZED: 서울특별시 강남구 강남대로 396
+SHORT: 강남구 강남대로 396
+DETAIL: NONE
+CONFIDENCE: LOW
+NOTE: Area name only — search 강남역 in Naver Map and navigate to your specific destination.
+
+Input: 롯데
+TYPE: 불완전
+NORMALIZED: 서울특별시 송파구 올림픽로 300
+SHORT: 송파구 올림픽로 300
+DETAIL: Lotte World Mall (롯데월드몰)
+CONFIDENCE: LOW
+NOTE: Multiple Lotte locations exist across Korea — this shows the main Seoul location. Specify the city or branch for accurate results.
+
+Input: Busan Gamcheon Culture Village
+TYPE: 건물명
+NORMALIZED: 부산광역시 사하구 감내2로 203
+SHORT: 사하구 감내2로 203
+DETAIL: Gamcheon Culture Village (감천문화마을)
+CONFIDENCE: HIGH
+NOTE: NONE
+
+Input: Jeju Island Seongsan Ilchulbong
+TYPE: 건물명
+NORMALIZED: 제주특별자치도 서귀포시 성산읍 일출로 284-12
+SHORT: 서귀포시 성산읍 일출로 284-12
+DETAIL: Seongsan Ilchulbong (성산일출봉)
+CONFIDENCE: HIGH
+NOTE: NONE`;
 
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [1000, 2000, 4000];
@@ -191,4 +237,62 @@ NOTE: This is the station address — your destination is near Exit 3.`;
   }
 
   throw new Error('The AI service is temporarily busy. Please try again in a few seconds.');
+}
+
+export async function translateAddressOptions(
+  options: Array<{ placeName: string; short: string }>
+): Promise<Array<{ placeNameEn: string; shortEn: string }>> {
+  const input = options
+    .map((opt, i) => `${i + 1}. Place: ${opt.placeName} | Address: ${opt.short}`)
+    .join('\n');
+
+  const prompt = `Translate these Korean place names and addresses to English.
+Use standard Korean romanization for addresses.
+For place names, use the official English name if known, otherwise transliterate.
+You MUST provide a translation for every item. Never leave a translation empty.
+
+${input}
+
+You must respond with exactly ${options.length} lines in this format, no other text:
+${options.map((_, i) => `${i + 1}. PLACE: [English place name] | ADDRESS: [English address]`).join('\n')}`;
+
+  const response = await fetch(GEMINI_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': process.env.GEMINI_API_KEY!,
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0 },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('[translate] API error:', response.status, errText.substring(0, 200));
+    return options.map(() => ({ placeNameEn: '', shortEn: '' }));
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+  // Filter empty lines first, then match by index
+  const lines = text
+    .trim()
+    .split('\n')
+    .filter((l: string) => l.trim().length > 0);
+
+  return options.map((_, i) => {
+    const line = lines.find((l: string) => l.startsWith(`${i + 1}.`)) ?? '';
+    const placeMatch = line.match(/PLACE:\s*(.+?)\s*\|/);
+    const addressMatch = line.match(/ADDRESS:\s*(.+)$/);
+    const placeNameEn = placeMatch?.[1]?.trim() ?? '';
+    const shortEn = addressMatch?.[1]?.trim() ?? '';
+    // Only return if both fields have actual content
+    return {
+      placeNameEn: placeNameEn.length > 0 ? placeNameEn : '',
+      shortEn: shortEn.length > 0 ? shortEn : '',
+    };
+  });
 }

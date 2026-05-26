@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callGemini } from '@/lib/gemini';
+import { callGemini, translateAddressOptions } from '@/lib/gemini';
 import { parseGeminiResponse } from '@/lib/addressParser';
 import {
   searchKakaoAddress,
   searchKakaoKeyword,
   extractStationQuery,
-  KakaoResult,
+  type KakaoResult,
 } from '@/lib/kakao';
+import { resolveAlias } from '@/lib/aliases';
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 const MAX_REQUESTS = 10;
@@ -55,6 +56,74 @@ function looksLikeInformal(input: string): boolean {
   return informalPatterns.some((pattern) => pattern.test(input));
 }
 
+function isSingleWordOrArea(input: string): boolean {
+  const words = input.trim().split(/\s+/);
+  const hasNumber = /\d/.test(input);
+  const hasRoadSuffix = /(로|길|대로|동|구|시|도)\s*\d/.test(input);
+  // Only treat as area if truly just 1-2 words with no numbers AND no road suffix
+  // Multi-word landmark names like "Jeju Island Seongsan Ilchulbong" should NOT match
+  return words.length <= 2 && !hasNumber && !hasRoadSuffix;
+}
+
+function koreanizeQuery(input: string): string {
+  return (
+    input
+      // Major cities
+      .replace(/seoul/gi, '서울')
+      .replace(/busan/gi, '부산')
+      .replace(/incheon/gi, '인천')
+      .replace(/daegu/gi, '대구')
+      .replace(/daejeon/gi, '대전')
+      .replace(/gwangju/gi, '광주')
+      .replace(/ulsan/gi, '울산')
+      .replace(/sejong/gi, '세종')
+      // Provinces
+      .replace(/gangwon/gi, '강원')
+      .replace(/gyeonggi/gi, '경기')
+      .replace(/chungbuk/gi, '충북')
+      .replace(/chungnam/gi, '충남')
+      .replace(/jeonbuk/gi, '전북')
+      .replace(/jeonnam/gi, '전남')
+      .replace(/gyeongbuk/gi, '경북')
+      .replace(/gyeongnam/gi, '경남')
+      .replace(/jeju/gi, '제주')
+      // Major non-Seoul cities
+      .replace(/gangneung/gi, '강릉')
+      .replace(/jeonju/gi, '전주')
+      .replace(/gyeongju/gi, '경주')
+      .replace(/sokcho/gi, '속초')
+      .replace(/yeosu/gi, '여수')
+      .replace(/tongyeong/gi, '통영')
+      .replace(/suwon/gi, '수원')
+      .replace(/seongnam/gi, '성남')
+      .replace(/goyang/gi, '고양')
+      .replace(/changwon/gi, '창원')
+      .replace(/pohang/gi, '포항')
+      .replace(/andong/gi, '안동')
+      .replace(/cheonan/gi, '천안')
+      .replace(/cheongju/gi, '청주')
+      .replace(/jeonju/gi, '전주')
+      // Seoul districts
+      .replace(/gangnam[- ]gu/gi, '강남구')
+      .replace(/mapo[- ]gu/gi, '마포구')
+      .replace(/gwanak[- ]gu/gi, '관악구')
+      .replace(/yongsan[- ]gu/gi, '용산구')
+      .replace(/seodaemun[- ]gu/gi, '서대문구')
+      .replace(/songpa[- ]gu/gi, '송파구')
+      .replace(/jongno[- ]gu/gi, '종로구')
+      .replace(/jung[- ]gu/gi, '중구')
+      .replace(/yeongdeungpo[- ]gu/gi, '영등포구')
+      .replace(/seongdong[- ]gu/gi, '성동구')
+      .replace(/gangdong[- ]gu/gi, '강동구')
+      .replace(/gangbuk[- ]gu/gi, '강북구')
+      // Road suffixes
+      .replace(/(\w+)-daero/gi, (_, name) => `${name}대로`)
+      .replace(/(\w+)-ro/gi, (_, name) => `${name}로`)
+      .replace(/(\w+)-gil/gi, (_, name) => `${name}길`)
+      .trim()
+  );
+}
+
 export async function POST(request: NextRequest) {
   const ip = getIP(request);
   const rateCheck = checkRateLimit(ip);
@@ -98,101 +167,135 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Step 1 — try Kakao first (fast, database-accurate)
-    // Skip Kakao for clearly informal/vague inputs
-    if (!looksLikeInformal(address)) {
-      let kakaoResult = await searchKakaoAddress(address);
+    // Step 1 — Resolve known aliases (N Seoul Tower → N서울타워 etc)
+    const aliasResolved = resolveAlias(address);
+    const workingAddress = aliasResolved !== address ? aliasResolved : address;
 
-      // If no result, try koreanized version for mixed English/Korean input
-      if (!kakaoResult) {
-        const koreanized = koreanizeQuery(address);
-        if (koreanized !== address) {
-          kakaoResult = await searchKakaoAddress(koreanized);
-          if (kakaoResult) {
-            console.log('[convert] Kakao hit (koreanized) for:', address);
-          }
+    // Step 2 — Skip Kakao for clearly informal inputs, go straight to Gemini
+    if (looksLikeInformal(workingAddress)) {
+      console.log('[convert] Informal input, Gemini fallback for:', address);
+      const rawText = await callGemini(address);
+      const parsed = parseGeminiResponse(rawText);
+      return NextResponse.json({
+        result: parsed,
+        remaining: rateCheck.remaining,
+        source: 'gemini',
+      });
+    }
+
+    let kakaoResult: KakaoResult | null = null;
+
+    // Step 3 — Try Kakao address search
+    kakaoResult = await searchKakaoAddress(workingAddress);
+
+    // Step 3b — If no result, try without lot number (for jibun addresses)
+    if (!kakaoResult) {
+      const withoutLotNumber = workingAddress.replace(/\s+\d+-?\d*$/, '').trim();
+      if (withoutLotNumber !== workingAddress) {
+        const partialResult = await searchKakaoAddress(withoutLotNumber);
+        if (partialResult) {
+          // Found the area but not the exact lot — return MEDIUM confidence
+          partialResult.confidence = 'MEDIUM';
+          partialResult.note =
+            'Exact lot number not found — this is the nearest area. Verify the specific building on arrival.';
+          kakaoResult = partialResult;
+          console.log('[convert] Kakao partial hit for:', address);
         }
-      }
-
-      // Try keyword search with exit stripped out
-      // Try keyword search with exit stripped
-      if (!kakaoResult) {
-        const { stationQuery, exitDetail } = extractStationQuery(address);
-        const koreanized = koreanizeQuery(stationQuery);
-        const searchQuery = koreanized !== stationQuery ? koreanized : stationQuery;
-
-        // Fetch up to 3 results to detect disambiguation
-        const keywordResult = await searchKakaoKeyword(searchQuery, 3);
-
-        if (keywordResult) {
-          if ('multiple' in keywordResult && keywordResult.multiple) {
-            // Multiple stations with same name — return disambiguation response
-            return NextResponse.json({
-              disambiguation: true,
-              options: keywordResult.options.map((opt) => ({
-                ...opt,
-                exitDetail,
-              })),
-              remaining: rateCheck.remaining,
-            });
-          }
-
-          // Single result
-          kakaoResult = keywordResult as KakaoResult;
-          if (exitDetail && kakaoResult) {
-            kakaoResult.detail = exitDetail;
-            kakaoResult.note =
-              'Station address shown — your destination is near the exit indicated.';
-          }
-          console.log('[convert] Kakao keyword hit for:', address);
-        }
-      }
-
-      if (kakaoResult) {
-        console.log('[convert] Kakao hit for:', address);
-        return NextResponse.json({
-          result: kakaoResult,
-          remaining: rateCheck.remaining,
-          source: 'kakao',
-        });
       }
     }
 
-    // Step 2 — fall back to Gemini for vague/informal/landmark inputs
-    console.log('[convert] Gemini fallback for:', address);
-    const rawText = await callGemini(address);
-    const parsed = parseGeminiResponse(rawText);
+    // Step 4 — Try koreanized version for mixed English/Korean input
+    if (!kakaoResult) {
+      const koreanized = koreanizeQuery(workingAddress);
+      if (koreanized !== workingAddress) {
+        kakaoResult = await searchKakaoAddress(koreanized);
+        if (kakaoResult) {
+          console.log('[convert] Kakao hit (koreanized) for:', address);
+        }
+      }
+    }
+
+    // Step 5 — Try keyword search with exit stripped
+    if (!kakaoResult) {
+      const { stationQuery, exitDetail } = extractStationQuery(workingAddress);
+      const koreanized = koreanizeQuery(stationQuery);
+      const searchQuery = koreanized !== stationQuery ? koreanized : stationQuery;
+
+      const keywordResult = await searchKakaoKeyword(searchQuery, 3);
+
+      if (keywordResult) {
+        if ('multiple' in keywordResult && keywordResult.multiple) {
+          const translations = await translateAddressOptions(
+            keywordResult.options.map((opt) => ({
+              placeName: opt.placeName,
+              short: opt.short,
+            }))
+          );
+
+          const translatedOptions = keywordResult.options.map((opt, i) => ({
+            ...opt,
+            placeNameEn: translations[i]?.placeNameEn ?? '',
+            shortEn: translations[i]?.shortEn ?? '',
+            exitDetail,
+          }));
+
+          return NextResponse.json({
+            disambiguation: true,
+            options: translatedOptions,
+            remaining: rateCheck.remaining,
+          });
+        }
+
+        kakaoResult = keywordResult as KakaoResult;
+        if (exitDetail && kakaoResult) {
+          kakaoResult.detail = exitDetail;
+          kakaoResult.note = 'Station address shown — your destination is near the exit indicated.';
+        }
+        console.log('[convert] Kakao keyword hit for:', address);
+      }
+    }
+
+    // Step 6 — Single word / area only with no Kakao result
+    // Don't fabricate — return LOW confidence with helpful note
+    if (!kakaoResult && isSingleWordOrArea(workingAddress)) {
+      console.log('[convert] Area-only input, Gemini fallback for:', address);
+      const rawText = await callGemini(address);
+      console.log('[gemini] raw:', rawText.substring(0, 200));
+      const parsed = parseGeminiResponse(rawText);
+      console.log('[gemini] parsed:', JSON.stringify(parsed));
+      // Force LOW confidence for area-only inputs
+      parsed.confidence = 'LOW';
+      parsed.note =
+        parsed.note ||
+        'Area name only — search this in Naver Map and navigate to the specific location.';
+      return NextResponse.json({
+        result: parsed,
+        remaining: rateCheck.remaining,
+        source: 'gemini',
+      });
+    }
+
+    // Step 7 — Gemini fallback for everything else
+    if (!kakaoResult) {
+      console.log('[convert] Gemini fallback for:', address);
+      const rawText = await callGemini(address);
+      const parsed = parseGeminiResponse(rawText);
+      return NextResponse.json({
+        result: parsed,
+        remaining: rateCheck.remaining,
+        source: 'gemini',
+      });
+    }
+
+    console.log('[convert] Kakao hit for:', address);
     return NextResponse.json({
-      result: parsed,
+      result: kakaoResult,
       remaining: rateCheck.remaining,
-      source: 'gemini',
+      source: 'kakao',
     });
   } catch (error) {
     console.error('[convert] Error:', error);
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return NextResponse.json({ error: message }, { status: 500 });
-  }
-
-  function koreanizeQuery(input: string): string {
-    return input
-      .replace(/seoul/gi, '서울')
-      .replace(/busan/gi, '부산')
-      .replace(/incheon/gi, '인천')
-      .replace(/gangnam[- ]gu/gi, '강남구')
-      .replace(/mapo[- ]gu/gi, '마포구')
-      .replace(/gwanak[- ]gu/gi, '관악구')
-      .replace(/yongsan[- ]gu/gi, '용산구')
-      .replace(/seodaemun[- ]gu/gi, '서대문구')
-      .replace(/songpa[- ]gu/gi, '송파구')
-      .replace(/jongno[- ]gu/gi, '종로구')
-      .replace(/jung[- ]gu/gi, '중구')
-      .replace(/yeongdeungpo[- ]gu/gi, '영등포구')
-      .replace(/seongdong[- ]gu/gi, '성동구')
-      .replace(/gangdong[- ]gu/gi, '강동구')
-      .replace(/gangbuk[- ]gu/gi, '강북구')
-      .replace(/(\w+)-daero/gi, (_, name) => `${name}대로`)
-      .replace(/(\w+)-ro/gi, (_, name) => `${name}로`)
-      .replace(/(\w+)-gil/gi, (_, name) => `${name}길`)
-      .trim();
   }
 }

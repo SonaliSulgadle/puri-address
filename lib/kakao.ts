@@ -14,6 +14,9 @@ export interface KakaoMultipleResults {
     short: string;
     detail: string | null;
     placeName: string;
+    cityEnglish: string;
+    placeNameEn: string;
+    shortEn: string;
   }>;
   exitDetail: string | null;
 }
@@ -47,9 +50,39 @@ interface KakaoKeywordDocument {
   category_group_code?: string;
 }
 
+const DISTRICT_TRANSLATIONS: Record<string, string> = {
+  서울: 'Seoul',
+  부산: 'Busan',
+  인천: 'Incheon',
+  대구: 'Daegu',
+  대전: 'Daejeon',
+  광주: 'Gwangju',
+  울산: 'Ulsan',
+  세종: 'Sejong',
+  강원도: 'Gangwon',
+  제주도: 'Jeju',
+  경기: 'Gyeonggi',
+  충북: 'Chungbuk',
+  충남: 'Chungnam',
+  전북: 'Jeonbuk',
+  전남: 'Jeonnam',
+  경북: 'Gyeongbuk',
+  경남: 'Gyeongnam',
+};
+
+export function getCityEnglish(normalized: string): string {
+  for (const [korean, english] of Object.entries(DISTRICT_TRANSLATIONS)) {
+    if (normalized.startsWith(korean) || normalized.includes(korean)) {
+      return english;
+    }
+  }
+  return '';
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function buildShort(normalized: string): string {
+function buildShort(normalized: string | undefined | null): string {
+  if (!normalized) return '';
   return normalized
     .replace('서울특별시', '서울')
     .replace('부산광역시', '부산')
@@ -59,6 +92,8 @@ function buildShort(normalized: string): string {
     .replace('광주광역시', '광주')
     .replace('울산광역시', '울산')
     .replace('세종특별자치시', '세종')
+    .replace('강원특별자치도', '강원도')
+    .replace('제주특별자치도', '제주도')
     .trim();
 }
 
@@ -129,20 +164,15 @@ export async function searchKakaoAddress(query: string): Promise<KakaoResult | n
 
       if (roadAddress) {
         const normalized = roadAddress.address_name;
+        if (!normalized) return null;
         const short = buildShort(normalized);
         const detail = extractDetail(doc);
-        return {
-          normalized,
-          short,
-          type: '도로명',
-          confidence: 'HIGH',
-          detail,
-          note: null,
-        };
+        return { normalized, short, type: '도로명', confidence: 'HIGH', detail, note: null };
       }
 
       if (jibunAddress) {
         const normalized = jibunAddress.address_name;
+        if (!normalized) return null;
         const short = buildShort(normalized);
         return {
           normalized,
@@ -191,7 +221,10 @@ export async function searchKakaoKeyword(
     const data = await response.json();
     const documents = data.documents;
 
-    if (!documents || documents.length === 0) return null;
+    if (!documents || documents.length === 0) {
+      console.log('[kakao] No address results for:', query);
+      return null;
+    }
 
     // Multiple results — filter and return for disambiguation
     if (size > 1 && documents.length > 1) {
@@ -208,6 +241,7 @@ export async function searchKakaoKeyword(
           detail: doc.place_name || null,
           placeName: doc.place_name || '',
           categoryCode: doc.category_group_code || '',
+          cityEnglish: getCityEnglish(buildShort(doc.road_address_name || doc.address_name)),
         }));
 
       if (options.length === 0) return null;
@@ -232,14 +266,13 @@ export async function searchKakaoKeyword(
     if (!normalized) return null;
 
     const short = buildShort(normalized);
-    const detail = doc.place_name || null;
 
     return {
       normalized,
       short,
       type: '건물명',
       confidence: 'HIGH',
-      detail,
+      detail: null,
       note: null,
     };
   } catch (error) {
