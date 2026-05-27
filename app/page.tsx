@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { track } from '@vercel/analytics';
 import AddressInput from '@/components/AddressInput';
 import AddressResult from '@/components/AddressResult';
-import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import FeedbackButton from '@/components/FeedbackButton';
 import type { ParsedAddress } from '@/lib/addressParser';
